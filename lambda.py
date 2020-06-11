@@ -15,7 +15,7 @@ FUNCTION='testfunc'
 inputs={}
 
 client = boto3.client('lambda',region_name = AWS_region)
-print 'client created'
+print('client created')
 
 response = client.list_functions(
     MaxItems=5
@@ -31,9 +31,9 @@ if found:
 	response = client.delete_function(
     FunctionName=FUNCTION
 )
-	print 'found replicated function, deleted'
+	print('found replicated function, deleted')
 
-print 'ready to create function'
+print('ready to create function')
 
 response = client.create_function(
     Code={
@@ -53,7 +53,7 @@ response = client.create_function(
     VpcConfig={
     },
 )
-print 'function created'
+print('function created')
 
 #mlayers: the layers for merging weights, mlayers[0] must be 1, which means the bottom layer. mlayers[-1] is the workers.
 #1. For training Case A
@@ -71,4 +71,4 @@ response = client.invoke(
     Payload=json.dumps(inputs)
 )
 
-print datetime.datetime.now()
+print(datetime.datetime.now())

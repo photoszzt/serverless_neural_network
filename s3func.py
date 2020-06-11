@@ -70,7 +70,7 @@ def s3_clear_bucket(bucket,prefix):
 		Bucket=bucket,
 		Prefix=prefix
 	)
-	if 'Contents' in response.keys():
+	if 'Contents' in list(response.keys()):
 		objs=response['Contents']
 		for obj in objs:
 			response = client.delete_object(
@@ -135,7 +135,7 @@ def s3_read_file(s3,bucket,key,timeout,once,delete):
 			Bucket=bucket,
 			Prefix=key
 		)
-		if 'Contents' in response.keys() and key in [i['Key'] for i in response['Contents']]:
+		if 'Contents' in list(response.keys()) and key in [i['Key'] for i in response['Contents']]:
 			found=1
 		"""
 		if key in [i['Key'] for i in response['Contents']]:
@@ -147,7 +147,7 @@ def s3_read_file(s3,bucket,key,timeout,once,delete):
 				Bucket=bucket,
 				Prefix=key
 			)
-			if 'Contents' in response.keys() and key in [i['Key'] for i in response['Contents']]:
+			if 'Contents' in list(response.keys()) and key in [i['Key'] for i in response['Contents']]:
 				found=1
 				break
 			time.sleep(SLEEPTIME)
@@ -286,7 +286,7 @@ def s3_check_exist(s3,bucket,key,timeout,once,delete):
 			Bucket=bucket,
 			Prefix=key,
 		)
-		if 'Contents' in response.keys() and key in [i['Key'] for i in response['Contents']]:
+		if 'Contents' in list(response.keys()) and key in [i['Key'] for i in response['Contents']]:
 			found=1
 		else:
 			found=0
@@ -296,7 +296,7 @@ def s3_check_exist(s3,bucket,key,timeout,once,delete):
 				Bucket=bucket,
 				Prefix=key,
 			)
-			if 'Contents' in response.keys() and key in [i['Key'] for i in response['Contents']]:
+			if 'Contents' in list(response.keys()) and key in [i['Key'] for i in response['Contents']]:
 				found=1
 				break
 			time.sleep(SLEEPTIME)
@@ -320,7 +320,7 @@ def s3_check_multi_exist(s3,bucket,prefix,keys,timeout,once):
 			Bucket=bucket,
 			Prefix=prefix,
 		)
-		if 'Contents' in response.keys():
+		if 'Contents' in list(response.keys()):
 			found=1
 			for key in keys:
 				if key not in [i['Key'] for i in response['Contents']]:
@@ -334,7 +334,7 @@ def s3_check_multi_exist(s3,bucket,prefix,keys,timeout,once):
 				Bucket=bucket,
 				Prefix=prefix,
 			)
-			if 'Contents' in response.keys():
+			if 'Contents' in list(response.keys()):
 				found=1
 				for key in keys:
 					if key not in [i['Key'] for i in response['Contents']]:
@@ -360,7 +360,7 @@ def s3_check_multi_exist_timer(s3,bucket,prefix,keys,tr,lst):
 			Bucket=bucket,
 			Prefix=prefix,
 		)
-		if 'Contents' in response.keys():
+		if 'Contents' in list(response.keys()):
 			found=1
 			for key in keys:
 				if key not in [i['Key'] for i in response['Contents']]:

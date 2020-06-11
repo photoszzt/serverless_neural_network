@@ -8,7 +8,7 @@ import subprocess
 import os
 import pickle
 import datetime
-from urllib2 import urlopen
+from urllib.request import urlopen
 import tensorflow as tf
 import random
 import numpy as np
@@ -76,9 +76,9 @@ def initialize_samples():
 	s3 = boto3.resource('s3')
 	split=500
 	fn=len(train_x)/split
-	print fn
+	print(fn)
 	for n in range(fn):
-		print n
+		print(n)
 		with open('/tmp/samples', 'w') as f:
 			pickle.dump({'data':train_x[n*split:(n+1)*split],'label':train_y[n*split:(n+1)*split]}, f)
 		s3.Bucket('lf-sourcet').upload_file('/tmp/samples', 'data/samples_cifar_'+str(n))
@@ -161,7 +161,7 @@ def model_old():
 
 	norm3 = tf.nn.lrn(conv5, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm3')
 	pool3 = tf.nn.max_pool(norm3, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool3')
-	print pool3
+	print(pool3)
 	with tf.variable_scope('fully_connected1') as scope:
 		reshape = tf.reshape(pool3, [-1, _RESHAPE_SIZE])
 		dim = reshape.get_shape()[1].value
@@ -205,15 +205,15 @@ def predict_test(show_confusion_matrix=False):
 	correct = (np.argmax(test_y, axis=1) == predicted_class)
 	acc = correct.mean()*100
 	correct_numbers = correct.sum()
-	print("Accuracy on Test-Set: {0:.2f}% ({1} / {2})".format(acc, correct_numbers, len(test_x)))
+	print(("Accuracy on Test-Set: {0:.2f}% ({1} / {2})".format(acc, correct_numbers, len(test_x))))
 
 	if show_confusion_matrix is True:
 		cm = confusion_matrix(y_true=np.argmax(test_y, axis=1), y_pred=predicted_class)
 		for i in range(_CLASS_SIZE):
 			class_name = "({}) {}".format(i, test_l[i])
-			print(cm[i, :], class_name)
+			print((cm[i, :], class_name))
 		class_numbers = [" ({0})".format(i) for i in range(_CLASS_SIZE)]
-		print("".join(class_numbers))
+		print(("".join(class_numbers)))
 
 	return acc
 
@@ -261,7 +261,7 @@ def model_p():
 
 	norm2 = tf.nn.lrn(conv2, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm2')
 	pool2 = tf.nn.max_pool(norm2, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool2')
-	print pool2.shape
+	print(pool2.shape)
 	#with tf.variable_scope('fully_connected1') as scope:
 	local3_reshape = tf.reshape(pool2, [-1, _RESHAPE_SIZE])
 	local3_dim = local3_reshape.get_shape()[1].value
@@ -334,7 +334,7 @@ def model():
 
 	norm2 = tf.nn.lrn(conv2, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm2')
 	pool2 = tf.nn.max_pool(norm2, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool2')
-	print pool2.shape
+	print(pool2.shape)
 	#with tf.variable_scope('fully_connected1') as scope:
 	local3_reshape = tf.reshape(pool2, [-1, _RESHAPE_SIZE])
 	local3_dim = local3_reshape.get_shape()[1].value
@@ -383,15 +383,15 @@ def top(pid):
 		correct = (np.argmax(test_y, axis=1) == predicted_class)
 		acc = correct.mean()*100
 		correct_numbers = correct.sum()
-		print("Accuracy on Test-Set: {0:.2f}% ({1} / {2})".format(acc, correct_numbers, len(test_x)))
+		print(("Accuracy on Test-Set: {0:.2f}% ({1} / {2})".format(acc, correct_numbers, len(test_x))))
 
 		if show_confusion_matrix is True:
 			cm = confusion_matrix(y_true=np.argmax(test_y, axis=1), y_pred=predicted_class)
 			for i in range(_CLASS_SIZE):
 				class_name = "({}) {}".format(i, test_l[i])
-				print(cm[i, :], class_name)
+				print((cm[i, :], class_name))
 			class_numbers = [" ({0})".format(i) for i in range(_CLASS_SIZE)]
-			print("".join(class_numbers))
+			print(("".join(class_numbers)))
 
 		return acc
 	
@@ -432,7 +432,7 @@ def top(pid):
 	np.random.shuffle(train_x)
 	train_y=train_x[:,-10:]
 	train_x=train_x[:,0:-10]
-	print train_x.shape,train_y.shape
+	print(train_x.shape,train_y.shape)
 
 	nn=100
 	bn=500
@@ -448,7 +448,7 @@ def top(pid):
 		st=time.time()
 		bs=len(train_x)/bn
 		for b in range(bn):
-			print [it,b]
+			print([it,b])
 			"""
 			randidx = np.random.randint(len(train_x), size=_BATCH_SIZE)
 			batch_xs = train_x[randidx]
@@ -466,8 +466,8 @@ def top(pid):
 		startt=0.0
 		alltime+=time.time()-st
 		#fid.write(str(time.time()-st)+' ')
-		print 'now cost-----',alltime
-		print 'test'
+		print('now cost-----',alltime)
+		print('test')
 		acc = predict_test()
 		#fid.write(str(acc)+'\n')
 		timerecord+=str(thist)+' '+str(acc)+'\n'
@@ -484,7 +484,7 @@ def top(pid):
 		for it in range(num_iterations):
 			allparams=[]
 			for n in range(nn):
-				print [it,n]
+				print([it,n])
 				for i in range(len(initmodel)):
 					sess.run(tf.assign(params[i],initmodel[i]))
 				randidx = np.random.randint(len(train_x), size=bs)
@@ -513,7 +513,7 @@ def top(pid):
 			initmodel=allparams
 			for i in range(len(initmodel)):
 				sess.run(tf.assign(params[i],initmodel[i]))
-			print 'test'
+			print('test')
 			acc = predict_test()
 			with open('recordtf','a') as fid:
 				fid.write(str(acc)+' iteration '+str(it)+'\n')		

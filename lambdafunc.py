@@ -36,7 +36,7 @@ def lambda_create_IAM_role(name):
 def lambda_delete_IAM_role(name):
 	client = boto3.client('iam')
 	response = client.list_roles()
-	if 'Roles' in response.keys() and name in [response['Roles'][i]['RoleName'] for i in range(len(response['Roles']))]:
+	if 'Roles' in list(response.keys()) and name in [response['Roles'][i]['RoleName'] for i in range(len(response['Roles']))]:
 		response = client.detach_role_policy(
 			RoleName=name,
 			PolicyArn='arn:aws:iam::aws:policy/AWSLambdaFullAccess'

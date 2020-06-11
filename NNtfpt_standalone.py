@@ -50,7 +50,7 @@ def model(layers,lr):
 	return outputs,x,y,labels,train_op,weights,biases
 
 def extract_data(filename, num_images):
-	print('Extracting', filename)
+	print(('Extracting', filename))
 	with gzip.open(filename) as bytestream:
 		bytestream.read(16)
 		buf = bytestream.read(IMAGE_SIZE * IMAGE_SIZE * num_images * NUM_CHANNELS)
@@ -61,7 +61,7 @@ def extract_data(filename, num_images):
 
 
 def extract_labels(filename, num_images):
-	print('Extracting', filename)
+	print(('Extracting', filename))
 	with gzip.open(filename) as bytestream:
 		bytestream.read(8)
 		buf = bytestream.read(1 * num_images)
@@ -103,19 +103,19 @@ def top():
 				alltime=0.0
 				for it in range(num_iterations):
 					bs=len(train_x)/bn
-					print [searchpoints,times,loop,it]
+					print([searchpoints,times,loop,it])
 					for b in range(bn):
 						batch_xs = train_x[b*bs:(b+1)*bs]
 						batch_ys = train_y[b*bs:(b+1)*bs]
 						sess.run(train_op, feed_dict={x: batch_xs, y: batch_ys})
-				print 'test'
+				print('test')
 				result=sess.run(outputs,feed_dict={x: test_x})
 				acc=(np.argmax(result[-1], axis=1)==test_y).mean()
 				if acc>best:
 					best=acc
 				bests=[layers,lr,bn]
 				#data+=str(loop)+' '+str(time.time()-st)+'\n'
-			print time.time()-gst
+			print(time.time()-gst)
 			data+=str(searchpoints)+' '+str(time.time()-gst)+'\n'
 		with open('hyperrecord','a') as f:
 			f.write(data+'\n')

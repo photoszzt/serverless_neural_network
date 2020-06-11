@@ -9,7 +9,7 @@ import subprocess
 import os
 import pickle
 import datetime
-from urllib2 import urlopen
+from urllib.request import urlopen
 import tensorflow as tf
 import random
 import numpy as np
@@ -47,7 +47,7 @@ def insert_sort(n,seq):
 			break
 	if found==0:
 		seq.insert(len(seq),n)
-		
+
 def avg_no_abnormal(seq,thre):
 	if len(seq)==0:
 		return 0
@@ -158,7 +158,7 @@ def model():
 	conv1_biases = tf.Variable(tf.random_normal([64]))
 	conv1_pre_activation = tf.nn.bias_add(conv1_conv, conv1_biases)
 	conv1 = tf.nn.relu(conv1_pre_activation, name='conv1')
-	
+
 	pool1 = tf.nn.max_pool(conv1, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool1')
 	norm1 = tf.nn.lrn(pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm1')
 
@@ -170,7 +170,7 @@ def model():
 
 	norm2 = tf.nn.lrn(conv2, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm2')
 	pool2 = tf.nn.max_pool(norm2, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool2')
-	
+
 	local3_reshape = tf.reshape(pool2, [-1, _RESHAPE_SIZE])
 	local3_dim = local3_reshape.get_shape()[1].value
 	local3_weights = tf.Variable(tf.random_normal([local3_dim, 384]))
@@ -187,9 +187,9 @@ def model():
 
 	global_step = tf.Variable(initial_value=0, name='global_step', trainable=False)
 	y_pred_cls = tf.argmax(softmax_linear, axis=1)
-	
+
 	params=[conv1_kernel,conv1_biases,conv2_kernel,conv2_biases,local3_weights,local3_biases,local4_weights,local4_biases,output_weights,output_biases]
-	
+
 	return x, y, softmax_linear, global_step, y_pred_cls , params
 
 def initialize_samples():
@@ -197,18 +197,18 @@ def initialize_samples():
 	s3 = boto3.resource('s3')
 	split=500
 	fn=len(train_x)/split
-	print fn
+	print(fn)
 	for n in range(fn):
-		print n
+		print(n)
 		with open('/tmp/samples', 'w') as f:
 			pickle.dump({'data':train_x[n*split:(n+1)*split],'label':train_y[n*split:(n+1)*split]}, f)
 		s3.Bucket(AWS_S3_bucket).upload_file('/tmp/samples', 'data/samples_cifar_'+str(n))
-	
+
 def initialize_weights():
 	x, y, output, global_step, y_pred_cls , params= model()
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
-	
+
 	s32 = boto3.resource('s3')
 	pw=[]
 	for i in range(len(params)):
@@ -225,13 +225,13 @@ def invoke_lambda(client,name,payload):
 	)
 
 def invoke_lambda_test(client,payload):
-	print '-'*20
-	print payload
-	
+	print('-'*20)
+	print(payload)
+
 def startup(event):
 	s3 = boto3.client('s3')
 	data=''
-	print 'start up'
+	print('start up')
 	s3func.s3_clear_bucket(AWS_S3_bucket,'data/modelcifar_')
 	s3func.s3_clear_bucket(AWS_S3_bucket,'flag/')
 	s3func.s3_clear_bucket(AWS_S3_bucket,'error/')
@@ -272,14 +272,14 @@ def startup(event):
 		)
 		data+='create '+funcname+' with memory '+str(mems[i])+'\n'
 	time.sleep(10)
-	if 'cratio' not in event.keys():
+	if 'cratio' not in list(event.keys()):
 		event['cratio']=1000
-	if 'pcratio' not in event.keys():
+	if 'pcratio' not in list(event.keys()):
 		event['pcratio']=[700,10,2*100*0.0001,2*100*0.0001/20]
 	event['rangen']=[50,200]
 	event['rangemem']=[256,1536]
-	
-	if 'mod' not in event.keys() or event['mod']==0:
+
+	if 'mod' not in list(event.keys()) or event['mod']==0:
 		event['funcname']='nntffunc_1'
 		event['state']=2
 		event['pid']=0
@@ -316,7 +316,7 @@ def startup(event):
 		event['funcname']='nntffunc_0'
 		s3.put_object(Bucket=AWS_S3_bucket,Body='true', Key='flag/work_monitor')
 		invoke_lambda(client,'nntffunc_0',event)
-	
+
 	s3.put_object(Bucket=AWS_S3_bucket,Body=data, Key='timestamp/timestamp_startup.tsp')
 
 def start_structure(event):
@@ -327,29 +327,29 @@ def start_structure(event):
 	s3 = boto3.client('s3')
 	s3.put_object(Bucket=AWS_S3_bucket,Body='true', Key='flag/work_'+str(pid))
 	data=''
-	print 'structure start:',pid
-	if 'modelname' in event.keys():
+	print('structure start:',pid)
+	if 'modelname' in list(event.keys()):
 		data+='modelname found: '+event['modelname']+'\n'
 		flag=s3func.s3_download_file(0,AWS_S3_bucket,event['modelname'],'/tmp/model',0,1,0)
 		if flag==0:
-			print 'ERROR!!!',event['modelname'],'not found'
+			print('ERROR!!!',event['modelname'],'not found')
 			s3.put_object(Bucket=AWS_S3_bucket,Body=event['modelname']+' not found', Key='error/error_start_'+str(pid))
 	else:
 		data+='modelname not found\n'
 		s3func.s3_download_file(0,AWS_S3_bucket,'data/modelcifar','/tmp/model',0,1,0)
 	s32 = boto3.resource('s3')
 	s32.Bucket(AWS_S3_bucket).upload_file('/tmp/model', 'data/modelcifar_'+str(pid)+'_'+str(nowiter))
-	
+
 	client=boto3.client('lambda',region_name = AWS_region)
-	
-	if ('fixedmlayers' not in event.keys()) or event['fixedmlayers']==0:
+
+	if ('fixedmlayers' not in list(event.keys())) or event['fixedmlayers']==0:
 		mlayers=estimate_merging(mlayers[-1])
 		if len(mlayers)>4:
 			mlayers=estimate_best_layers(mlayers[-1],2)
 		event['mlayers']=mlayers
 		data+='mlayers is: '+str(mlayers)+'\n'
-	
-	search=range(len(mlayers)-1)
+
+	search=list(range(len(mlayers)-1))
 	search.reverse()
 	mstart=[]
 	for l in search:
@@ -384,7 +384,7 @@ def train(event):
 	st=datetime.datetime.now()
 	stt=time.time()
 	tcount=time.time()
-	if 'roundtime' not in event.keys():
+	if 'roundtime' not in list(event.keys()):
 		event['roundtime']=250
 	tend=event['roundtime']
 	ns=event['ns']
@@ -393,19 +393,19 @@ def train(event):
 	maxiter=event['maxiter']
 	nowiter=event['nowiter']
 	funcname=event['funcname']
-	if 'batchnumber' not in event.keys():
+	if 'batchnumber' not in list(event.keys()):
 		event['batchnumber']=1
 	bn=event['batchnumber']
 	pid=event['pid']
-	if 'testtime' not in event.keys():
+	if 'testtime' not in list(event.keys()):
 		event['testtime']=10
-	if 'waittime' not in event.keys():
+	if 'waittime' not in list(event.keys()):
 		event['waittime']=tend*2/3
-	if 'learningrate' not in event.keys():
+	if 'learningrate' not in list(event.keys()):
 		event['learningrate']=0.1
 	waittime=event['waittime']
 	timer=s3func.timer([waittime,tend])
-	if 'round' not in event.keys():
+	if 'round' not in list(event.keys()):
 		event['round']=0
 	else:
 		event['round']+=1
@@ -428,7 +428,7 @@ def train(event):
 	filerecord+='====='+str(stt)+'\n'
 	data='train round '+str(event['round'])+', round time '+str(event['roundtime'])+', start at '+str(st)+' ##'+str(time.time())+'\n'
 	data+='info: pos '+str(pos)+', memory '+str(response['Configuration']['MemorySize'])+', mlayers '+str(mlayers)+', ns '+str(ns)+'\n'
-	print '='*5,'train node',pos,'='*5,'train phase start'
+	print('='*5,'train node',pos,'='*5,'train phase start')
 	split=500
 	base=int(ns/mlayers[-1])
 	remin=ns%mlayers[-1]
@@ -441,18 +441,18 @@ def train(event):
 	en=sn+base
 	if remin:
 		en+=1
-	print '='*5,'train node',pos,'='*5,'read samples from',sn,'to',en
+	print('='*5,'train node',pos,'='*5,'read samples from',sn,'to',en)
 	train_x=[]
 	train_y=[]
 	sfile=int(sn/split)
 	efile=int((en-1)/split)
-	print '='*5,'train node',pos,'='*5,'read files from',sfile,'to',efile
+	print('='*5,'train node',pos,'='*5,'read files from',sfile,'to',efile)
 	data+='start up time: '+str(time.time()-stt)+' ##'+str(time.time())+' ##'+str(stt)+'--'+str(time.time())+'\n'
 	s3.put_object(Bucket=AWS_S3_bucket,Body=data, Key='timestamp/timestamp_train_'+str(pid)+'_'+str(pos)+'_'+str(event['round'])+'.tsp')
 	#=========================================read========================================
 	stt=time.time()
 	if os.path.exists('/tmp/samples_save'):
-		print '='*5,'train node',pos,'='*5,'found samples!!!'
+		print('='*5,'train node',pos,'='*5,'found samples!!!')
 		with open('/tmp/samples_save', 'r') as f:
 			temp=pickle.load(f)
 		#os.remove('/tmp/samples_save_'+str(pos))
@@ -460,24 +460,24 @@ def train(event):
 		train_y=temp['label']
 		data+='found samples!!! time: '+str(time.time()-stt)+' ##'+str(time.time())+' ##'+str(stt)+'--'+str(time.time())+'\n'
 	else:
-		print '='*5,'train node',pos,'='*5,'samples not found, downloading'
+		print('='*5,'train node',pos,'='*5,'samples not found, downloading')
 		for now in range(sfile,efile+1):
-			print 'downloading',now,'from range',sfile,efile+1
+			print('downloading',now,'from range',sfile,efile+1)
 			flag=s3func.s3_download_file(s3,AWS_S3_bucket,'data/samples_cifar_'+str(now),'/tmp/samples',0,1,0)
 			if flag==0:
-				print '='*5,'train node',pos,'='*5,'ERROR!!!: fail to read sample file:',now
+				print('='*5,'train node',pos,'='*5,'ERROR!!!: fail to read sample file:',now)
 			with open('/tmp/samples', 'r') as f:
 				temp=pickle.load(f)
 			sread=max([split*now,sn])-split*now
 			eread=min([split*(now+1),en])-split*now
-			
+
 			if train_x==[]:
 				train_x=temp['data'][sread:eread]
 				train_y=temp['label'][sread:eread]
 			else:
 				train_x=np.append(temp['data'],temp['data'][sread:eread],axis=0)
 				train_y=np.append(temp['label'],temp['label'][sread:eread],axis=0)
-			
+
 		if os.path.exists('/tmp/samples'):
 			os.remove('/tmp/samples')
 		with open('/tmp/samples_save', 'w') as f:
@@ -490,11 +490,11 @@ def train(event):
 	#=========================================initialize==================================
 	stt=time.time()
 	x, y, output, global_step, y_pred_cls , params= model()
-	
+
 	loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=output, labels=y))
 	#optimizer = tf.train.RMSPropOptimizer(learning_rate=1e-3).minimize(loss, global_step=global_step)
 	#optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.1).minimize(loss, global_step=global_step)
-	
+
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
 	data+='training initialize time: '+str(time.time()-stt)+' ##'+str(stt)+'--'+str(time.time())+'\n'
@@ -510,29 +510,29 @@ def train(event):
 		stiter=time.time()
 		flag=s3func.s3_download_file(s3,AWS_S3_bucket,'flag/work_'+str(pid),'/tmp/work',0,1,0)
 		if flag==0:
-			print '='*5,'train node',pos,'='*5,'Abandon!!!! pid:',pid
+			print('='*5,'train node',pos,'='*5,'Abandon!!!! pid:',pid)
 			return
 		stt=time.time()
-		print '+'*5,'train node',pos,'pid',pid,'+'*5,'now start iteration',nowiter
-		print '='*5,'train node',pos,'='*5,'now start iteration',nowiter
+		print('+'*5,'train node',pos,'pid',pid,'+'*5,'now start iteration',nowiter)
+		print('='*5,'train node',pos,'='*5,'now start iteration',nowiter)
 		stt2=time.time()
 		flag=s3func.s3_download_file_timer(s3,AWS_S3_bucket,'data/modelcifar_'+str(pid)+'_'+str(nowiter),'/tmp/model',timer,0,0)
 		itertime[0]+=time.time()-stt2
 		data+='training '+str(nowiter)+' model waiting time: '+str(time.time()-stt2)+' ##'+str(stt2)+'--'+str(time.time())+'\n'
 		if flag==0:
 			if timer.query()[1]>waittime/4:
-				print '++++++++lambda train',pos,'at iteration',nowiter,'end at',datetime.datetime.now()
+				print('++++++++lambda train',pos,'at iteration',nowiter,'end at',datetime.datetime.now())
 				s3.put_object(Bucket=AWS_S3_bucket,Body=data, Key='timestamp/timestamp_train_'+str(pid)+'_'+str(pos)+'_'+str(event['round'])+'.tsp')
 				event['nowiter']=nowiter
 				return
 			else:
-				print '='*5,'train node',pos,'='*5,'ERROR!!!: fail to read model',nowiter
+				print('='*5,'train node',pos,'='*5,'ERROR!!!: fail to read model',nowiter)
 				s3.put_object(Bucket=AWS_S3_bucket,Body='fail to read model '+str(nowiter), Key='error/error_train_'+str(pid)+'_'+str(pos))
 				return
 		if nowiter>=(event['round']+1)*rounditer:
 			if [0,0] in event['mergepos']:
 				s3.put_object(Bucket=AWS_S3_bucket,Body=filerecord, Key='results/result')
-			print '++++++++lambda train',pos,'at iteration',nowiter,'end at',datetime.datetime.now()
+			print('++++++++lambda train',pos,'at iteration',nowiter,'end at',datetime.datetime.now())
 			s3.put_object(Bucket=AWS_S3_bucket,Body=data, Key='timestamp/timestamp_train_'+str(pid)+'_'+str(pos)+'_'+str(event['round'])+'.tsp')
 			event['nowiter']=nowiter
 			invoke_lambda(client,funcname,event)
@@ -541,7 +541,7 @@ def train(event):
 		with open('/tmp/model', 'r') as f:
 			temp=pickle.load(f)
 		if temp[0]==[]:
-			print '='*5,'train node',pos,'='*5,'ERROR!!!: model format wrong',nowiter
+			print('='*5,'train node',pos,'='*5,'ERROR!!!: model format wrong',nowiter)
 			s3.put_object(Bucket=AWS_S3_bucket,Body='model format wrong '+str(nowiter), Key='error/error_train_'+str(pid)+'_'+str(pos))
 			return
 		for i in range(len(temp)):
@@ -550,7 +550,7 @@ def train(event):
 		data+='training '+str(nowiter)+' download model time: '+str(time.time()-stt)+' ##'+str(stt)+'--'+str(time.time())+'\n'
 		stt=time.time()
 		bs=len(train_x)/bn
-		print '='*5,'train node',pos,'='*5,'train start'
+		print('='*5,'train node',pos,'='*5,'train start')
 		optimizer = tf.train.GradientDescentOptimizer(learning_rate=event['learningrate']).minimize(loss, global_step=global_step)
 		for b in range(bn):
 			i_global, _ = sess.run([global_step, optimizer], feed_dict={x: train_x[b*bs:(b+1)*bs,:], y: train_y[b*bs:(b+1)*bs,:]})#=========================train
@@ -563,7 +563,7 @@ def train(event):
 			pw.append(sess.run(params[i]))
 		with open('/tmp/model', 'w') as f:
 			pickle.dump(pw, f)
-		print '='*5,'train node',pos,'='*5,'write result as layer',len(mlayers)-1,'node',pos
+		print('='*5,'train node',pos,'='*5,'write result as layer',len(mlayers)-1,'node',pos)
 		s32.Bucket(AWS_S3_bucket).upload_file('/tmp/model', 'data/modelcifar_'+str(pid)+'_'+str(len(mlayers)-1)+'_'+str(pos))
 		itertime[0]+=time.time()-stt
 		data+='training '+str(nowiter)+' model write time: '+str(time.time()-stt)+' ##'+str(stt)+'--'+str(time.time())+'\n'
@@ -578,14 +578,14 @@ def train(event):
 			if tempd==0:
 				return
 			elif tempd==1:
-				print '++++++++lambda train',pos,'at iteration',nowiter,'end at',datetime.datetime.now()
+				print('++++++++lambda train',pos,'at iteration',nowiter,'end at',datetime.datetime.now())
 				s3.put_object(Bucket=AWS_S3_bucket,Body=data, Key='timestamp/timestamp_train_'+str(pid)+'_'+str(pos)+'_'+str(event['round'])+'.tsp')
 				event['nowiter']=nowiter
 				return
 			else:
 				data+=tempd
 		data+='training '+str(nowiter)+' valid iteration time: '+str(itertime[0])+'\n'
-		print '-'*5,'train node',pos,'-'*5,'now end iteration',nowiter
+		print('-'*5,'train node',pos,'-'*5,'now end iteration',nowiter)
 		avgitertime+=itertime[0]
 		"""
 		if nowiter>=min(10,maxiter-1) and [0,0] in event['mergepos']:
@@ -622,17 +622,17 @@ def train(event):
 	if [0,0] in event['mergepos']:
 		s3.put_object(Bucket=AWS_S3_bucket,Body=str(time.time()), Key='timestamp/timestamp_train_end_'+str(pid))
 	s3.put_object(Bucket=AWS_S3_bucket,Body=data, Key='timestamp/timestamp_train_'+str(pid)+'_'+str(pos)+'_'+str(event['round'])+'.tsp')
-		
+
 def merge(mlayers,pos,mergepos,nowiter,timer,waittime,itertime,pid):
 	stt=time.time()
 	tcount=time.time()
 	layer=pos[0]
 	node=pos[1]
 	data=''
-	
+
 	base=int(mlayers[layer+1]/mlayers[layer])
 	remin=mlayers[layer+1]%mlayers[layer]
-	print '='*5,'merge node at layer',layer,'node',node,'='*5,'merge phase start'
+	print('='*5,'merge node at layer',layer,'node',node,'='*5,'merge phase start')
 	sn=0
 	for n in range(node):
 		sn+=base
@@ -642,21 +642,21 @@ def merge(mlayers,pos,mergepos,nowiter,timer,waittime,itertime,pid):
 	en=sn+base
 	if remin:
 		en+=1
-	print '='*5,'merge node at layer',layer,'node',node,'='*5,'merge model file at layer',layer+1,'from',sn,'to',en
+	print('='*5,'merge node at layer',layer,'node',node,'='*5,'merge model file at layer',layer+1,'from',sn,'to',en)
 	s3 = boto3.client('s3')
 	s32 = boto3.resource('s3')
 	itertime[0]+=time.time()-stt
 	data+='merge '+str(nowiter)+' layer '+str(layer)+' node '+str(node)+' merge '+str([sn,en-1])+' start up time: '+str(time.time()-stt)+' ##'+str(stt)+'--'+str(time.time())+'\n'
-	
+
 	#============================================start==============================================
 	stt=time.time()
-	print '='*5,'merge node at layer',layer,'node',node,'='*5,'iteration',nowiter
+	print('='*5,'merge node at layer',layer,'node',node,'='*5,'iteration',nowiter)
 	params=[]
 	flagt=0.0
 	modelt=0.0
 	itertime[0]+=1
 	#files=['data/modelcifar_'+str(pid)+'_'+str(layer+1)+'_'+str(now) for now in range(sn,en)]
-	
+
 	finished=[0 for i in range(en-sn)]
 	timer.local_start(0)
 	while 1:
@@ -669,7 +669,7 @@ def merge(mlayers,pos,mergepos,nowiter,timer,waittime,itertime,pid):
 					if tresult[1]>waittime/4:
 						return 0
 					else:
-						print '='*5,'merge node at layer',layer,'node',node,'='*5,'ERROR!!!: fail to read model: layer',layer+1,'finished state',str(finished)
+						print('='*5,'merge node at layer',layer,'node',node,'='*5,'ERROR!!!: fail to read model: layer',layer+1,'finished state',str(finished))
 						s3.put_object(Bucket=AWS_S3_bucket,Body='fail to read model at iteration '+str(nowiter)+' at layer '+str(layer+1)+', finished state'+str(finished), Key='error/error_merge_'+str(pid)+'_'+str(layer)+'_'+str(node))
 						return 0
 				flag=s3func.s3_download_file(s3,AWS_S3_bucket,'data/modelcifar_'+str(pid)+'_'+str(layer+1)+'_'+str(now),'/tmp/model',0,1,1)
@@ -686,7 +686,7 @@ def merge(mlayers,pos,mergepos,nowiter,timer,waittime,itertime,pid):
 	data+='merge '+str(nowiter)+' layer '+str(layer)+' node '+str(node)+' model read time: '+str(time.time()-stt)+' ##'+str(stt)+'--'+str(time.time())+'\n'
 	stt=time.time()
 	if layer==0:
-		print '='*5,'merge node at layer',layer,'node',node,'='*5,'now is the final node'
+		print('='*5,'merge node at layer',layer,'node',node,'='*5,'now is the final node')
 		if not params==[]:
 			for i in range(len(params)):
 				params[i]=params[i]/mlayers[-1]
@@ -698,7 +698,7 @@ def merge(mlayers,pos,mergepos,nowiter,timer,waittime,itertime,pid):
 	else:
 		with open('/tmp/model', 'w') as f:
 			pickle.dump(params, f)
-		print '='*5,'merge node at layer',layer,'node',node,'='*5,'write model as layer',layer,'node',node
+		print('='*5,'merge node at layer',layer,'node',node,'='*5,'write model as layer',layer,'node',node)
 		s32.Bucket(AWS_S3_bucket).upload_file('/tmp/model', 'data/modelcifar_'+str(pid)+'_'+str(layer)+'_'+str(node))
 	itertime[0]+=time.time()-stt
 	data+='merge '+str(nowiter)+' layer '+str(layer)+' node '+str(node)+' model write time: '+str(time.time()-stt)+' ##'+str(stt)+'--'+str(time.time())+'\n'
@@ -710,7 +710,7 @@ def merge(mlayers,pos,mergepos,nowiter,timer,waittime,itertime,pid):
 			return tempd
 		else:
 			data+=tempd
-	
+
 	return data
 
 def lambda_handler(event,context):

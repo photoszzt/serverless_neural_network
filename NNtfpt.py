@@ -13,7 +13,7 @@ import subprocess
 import os
 import pickle
 import datetime
-from urllib2 import urlopen
+from urllib.request import urlopen
 import tensorflow as tf
 import random
 import numpy as np
@@ -120,7 +120,7 @@ def model(layers,lr):
 	return outputs,x,y,labels,train_op,weights,biases
 
 def extract_data(filename, num_images):
-	print('Extracting', filename)
+	print(('Extracting', filename))
 	with gzip.open(filename) as bytestream:
 		bytestream.read(16)
 		buf = bytestream.read(IMAGE_SIZE * IMAGE_SIZE * num_images * NUM_CHANNELS)
@@ -131,7 +131,7 @@ def extract_data(filename, num_images):
 
 
 def extract_labels(filename, num_images):
-	print('Extracting', filename)
+	print(('Extracting', filename))
 	with gzip.open(filename) as bytestream:
 		bytestream.read(8)
 		buf = bytestream.read(1 * num_images)
@@ -146,13 +146,13 @@ def invoke_lambda(client,name,payload):
 	)
 
 def invoke_lambda_test(client,payload):
-	print '-'*20
-	print payload
+	print('-'*20)
+	print(payload)
 	
 def startup(event):
 	s3 = boto3.client('s3')
 	data=''
-	print 'start up'
+	print('start up')
 	s3func.s3_clear_bucket(AWS_S3_bucket,'data/model_')
 	s3func.s3_clear_bucket(AWS_S3_bucket,'flag/')
 	s3func.s3_clear_bucket(AWS_S3_bucket,'error/')
@@ -222,16 +222,16 @@ def monitor(event):
 	stt=time.time()
 	nworker=event['nworker']
 	pid=event['pid']
-	if 'roundtime' not in event.keys():
+	if 'roundtime' not in list(event.keys()):
 		event['roundtime']=250
-	if 'waittime' not in event.keys():
+	if 'waittime' not in list(event.keys()):
 		event['waittime']=event['roundtime']*2/3
 	timer=s3func.timer([event['waittime'],event['roundtime']])
 	s3 = boto3.client('s3')
 	s32 = boto3.resource('s3')
 	flag=s3func.s3_download_file(s3,AWS_S3_bucket,'flag/work_pt','/tmp/work',0,1,0)
 	if flag==0:
-		print 'monitor terminated!!!!!!'
+		print('monitor terminated!!!!!!')
 		return
 	s3.put_object(Bucket=AWS_S3_bucket,Body=str(st), Key='timestamp/timestamp_monitor')
 	finished=[0 for i in range(nworker)]
@@ -279,24 +279,24 @@ def train(event):
 	st=datetime.datetime.now()
 	stt=time.time()
 	tcount=time.time()
-	if 'roundtime' not in event.keys():
+	if 'roundtime' not in list(event.keys()):
 		event['roundtime']=250
 	tend=event['roundtime']
 	ns=event['ns']
 	pos=event['pos']
 	layers=event['layers']
 	lr=event['lr']
-	if 'batchnumber' not in event.keys():
+	if 'batchnumber' not in list(event.keys()):
 		event['batchnumber']=1
 	pid=event['pid']
-	if 'testtime' not in event.keys():
+	if 'testtime' not in list(event.keys()):
 		event['testtime']=10
-	if 'waittime' not in event.keys():
+	if 'waittime' not in list(event.keys()):
 		event['waittime']=tend*2/3
 	waittime=event['waittime']
 	timer=s3func.timer([waittime,tend])
 	#waittime=tend/4
-	if 'round' not in event.keys():
+	if 'round' not in list(event.keys()):
 		event['round']=0
 	else:
 		event['round']+=1
@@ -305,7 +305,7 @@ def train(event):
 	s32 = boto3.resource('s3')
 	flag=s3func.s3_download_file(s3,AWS_S3_bucket,'flag/work_pt','/tmp/work',0,1,0)
 	if flag==0:
-		print 'terminated!!!!!!'
+		print('terminated!!!!!!')
 		return
 	client=boto3.client('lambda',region_name = AWS_region)
 	filerecord=s3func.s3_read_file_v2(s3,AWS_S3_bucket,'results/result',0,1,0)
@@ -315,24 +315,24 @@ def train(event):
 	filerecord+='====='+str(stt)+'\n'
 	data='train round '+str(event['round'])+', round time '+str(event['roundtime'])+', start at '+str(st)+' ##'+str(time.time())+'\n'
 	data+='info: pos '+str(pos)+'\n'
-	print '='*5,'train node',pos,'='*5,'train phase start'
+	print('='*5,'train node',pos,'='*5,'train phase start')
 	data+='start up time: '+str(time.time()-stt)+' ##'+str(time.time())+' ##'+str(stt)+'--'+str(time.time())+'\n'
 	s3.put_object(Bucket=AWS_S3_bucket,Body=data, Key='timestamp/timestamp_train_'+str(pid)+'_'+str(pos)+'_'+str(event['round']))
 	#=========================================read========================================
 	stt=time.time()
-	print '='*5,'train node',pos,'='*5,'downloading samples'
+	print('='*5,'train node',pos,'='*5,'downloading samples')
 	flag=s3func.s3_download_file(s3,AWS_S3_bucket,'data/samples_mnist_x','/tmp/mnist_x',0,1,0)
 	if flag==0:
-		print '='*5,'train node',pos,'='*5,'ERROR!!!: fail to read sample file x'
+		print('='*5,'train node',pos,'='*5,'ERROR!!!: fail to read sample file x')
 	flag=s3func.s3_download_file(s3,AWS_S3_bucket,'data/samples_mnist_y','/tmp/mnist_y',0,1,0)
 	if flag==0:
-		print '='*5,'train node',pos,'='*5,'ERROR!!!: fail to read sample file y'
+		print('='*5,'train node',pos,'='*5,'ERROR!!!: fail to read sample file y')
 	flag=s3func.s3_download_file(s3,AWS_S3_bucket,'data/samples_mnist_test_x','/tmp/mnist_test_x',0,1,0)
 	if flag==0:
-		print '='*5,'train node',pos,'='*5,'ERROR!!!: fail to read test file x'
+		print('='*5,'train node',pos,'='*5,'ERROR!!!: fail to read test file x')
 	flag=s3func.s3_download_file(s3,AWS_S3_bucket,'data/samples_mnist_test_y','/tmp/mnist_test_y',0,1,0)
 	if flag==0:
-		print '='*5,'train node',pos,'='*5,'ERROR!!!: fail to read test file y'
+		print('='*5,'train node',pos,'='*5,'ERROR!!!: fail to read test file y')
 	train_x = extract_data('/tmp/mnist_x', 60000)
 	train_y = extract_labels('/tmp/mnist_y', 60000)
 	test_x = extract_data('/tmp/mnist_test_x', 10000)

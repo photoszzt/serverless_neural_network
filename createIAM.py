@@ -30,6 +30,6 @@ response = client.list_attached_role_policies(
     PathPrefix='/',
     MaxItems=123
 )
-print response
+print(response)
 
-print 'finished'
+print('finished')
